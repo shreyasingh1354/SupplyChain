@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect} from "react";
 import Web3Modal from "web3modal";
+
 import { ethers } from "ethers";
 
 import tracking from "../context/tracking.json";
@@ -11,43 +12,61 @@ const ContractABI = tracking.abi;
 const fetchContract = (signerOrProvider) =>
 new ethers.Contract(ContractAddress, ContractABI, signerOrProvider);
 
+
+export const TrackingContext= React.createContext();
+
 export const TrackingProvider = ({children}) =>{
 
     const DappName = "Tracking Dapp";
     const [currentUser, setCurrentUser] = useState("");
 
-    const createShipment = async (items) => {
-        console.log(items);
-        const{receiver, pickupTime, distance, price } = items;
-    
-        try{
-          const web3Modal =  new web3Modal();
-          const connection = await web3Modal.connect();
-          const provider = new ethers.providers.Web3Provider(connection);
-          const signer = provider.getSigner();
-          const contract = await contract.createShipment(
-          receiver,
-          new Date(pickupTime).getTime(),
-          distance,
-          ethers.utils.parseUnits(price,18),
-          {
-
-          value: ethers.utils.parseUnits(price,18),
-          })
-        ;
-        await createItem.wait();
-        console.log(createItem);
-      }catch (error){
-        console.log("wrong",error);
+    const createShipment = async () => {
+      console.log(items);
+      const items = {
+        receiver,
+        pickupTime,
+        distance,
+        price,
+      };
+     
+  
+      try {
+          // Check if price is valid (not empty or undefined)
+          if (price && typeof price === 'string' && price.trim() !== '') {
+              const web3Modal = new Web3Modal();
+              const connection = await web3Modal.connect();
+              const provider = new ethers.providers.Web3Provider(connection);
+              const signer = provider.getSigner();
+              const contract = fetchContract(signer);
+  
+              const createItem = await contract.createShipment(
+                  receiver,
+                  new Date(pickupTime).getTime(),
+                  distance,
+                  ethers.utils.formatEther(price.toString()),
+                  {   value:receiver,
+                    value:pickupTime,
+                    value:distance,
+                      value: ethers.utils.formatUnits(ethers.utils.parseUnits(price, 18), 18), // Maintain full precision
+                  }
+              );
+  
+              await createItem.wait();
+              console.log(createItem);
+          } else {
+              console.error("Error: Invalid price. Please provide a valid price value.");
+          }
+      } catch (error) {
+          console.log("Error:", error);
       }
-    };
+  };
 const getAllShipment = async () =>{
 try{
-  const provider = new ethers.providers.JsonRpcProvider();
+  const provider = new ethers.providers.JsonRpcProvider.send();
   const contract = fetchContract(provider);
 
   const shipments =  await contract.getAllTransactions();
-  const allshipments = shipments.map((shipment) => ({
+  const allShipments = shipments.map((shipment) => ({
     sender: shipment.sender,
     receiver: shipment.receiver,
     price: ethers.utils.formatEther(shipment.price.toString()),
@@ -69,9 +88,9 @@ const getShipmentsCount =  async() =>{
     if(!window.ethereum) return "Install metamask";
 
     const accounts = await window.ethereum.request({
-      method: "eth-acc",
+      method: "eth_requestAccounts",
     });
-    const provider = new ethers.providers.JsonRpcProvider();
+    const provider = new ethers.providers.JsonRpcProvider.send();
     const contract = fetchContract(provider);
     const shipmentsCount = await contract.getShipmentsCount(accounts[0]);
     return shipmentsCount.toNumber();
@@ -87,13 +106,13 @@ const getShipmentsCount =  async() =>{
   try{
     if(!window.ethereum) return "install metamask";
      const accounts = await window.ethereum.request({
-      method: "eth_accounts",
+      method: "eth_requestAccounts",
      });
      const web3Modal = new Web3Modal();
      const connection = await web3Modal.connect();
      const provider = new ethers.providers.Web3Provider(connection)
      const signer = provider.getSigner();
-     const contact = fetchContract(signer);
+     const contract = fetchContract(signer);
      
      const transaction = await contract.completeShipment(
        accounts(0),
@@ -117,10 +136,10 @@ console.log("wrong completeShipment",error);
       if(!window.ethereum) return "Install metamask";
 
       const accounts = await window.ethereum.request({
-        method: "eth-accounts",
+        method: "eth_requestAccounts",
       });
 
-      const provider =  new ethers.providers.JsonRpcProvider();
+      const provider =  new ethers.providers.JsonRpcProvider('http://localhost:3000/');
       const contract = fetchContract(provider);
       const shipment = await contract.getShipment(accounts[0],index * 1);
 
@@ -148,7 +167,7 @@ console.log("wrong completeShipment",error);
         if(!window.ethereum) return "Install metamask";
 
         const accounts = await window.ethereum.request({
-          method: "eth_accounts",
+          method: "eth_requestAccounts",
         });
 
       const web3Modal= new Web3Modal();
@@ -174,7 +193,7 @@ console.log("wrong completeShipment",error);
         if(!window.ethereum) return "Install metamask";
 
         const accounts = await window.ethereum.request({
-          method: "eth-accounts",
+          method: "eth_requestAccounts",
         });
         if(accounts.length){
           setCurrentUser(accounts[0]);
@@ -190,7 +209,7 @@ console.log("wrong completeShipment",error);
     try{
       if(!window.ethereum) return "Install metamask";
       
-      const accounts = await window.ethereum. request({
+      const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
 
